@@ -56,6 +56,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .ib{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);flex:none;transition:transform .15s,background .2s;position:relative}
 .ib:active{transform:scale(.92)} .ib svg{width:20px;height:20px}
 .badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--cy);color:#00161b;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;animation:pulse 1.6s infinite}
+img.logo{background:#fff;object-fit:cover;border-radius:50%;padding:0}
 .logo{width:34px;height:34px;border-radius:10px;background:conic-gradient(from 200deg,var(--acc),var(--acc2),var(--acc));display:grid;place-items:center;font-family:var(--disp);font-weight:900;font-style:italic;color:#fff;box-shadow:0 0 22px rgba(255,45,120,.4)}
 
 .nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + var(--safe-b));z-index:40;display:flex;gap:4px;padding:6px;border-radius:22px;
@@ -252,6 +253,7 @@ input[type=range].lvl{background:linear-gradient(90deg,#334155,var(--acc))}
 .ficha{background:#fff;color:#111;border-radius:16px;padding:14px;font-size:12.5px;overflow-x:auto}
 .ficha h1{font-family:var(--disp);font-size:34px;margin:0;text-transform:uppercase;line-height:1}
 .ficha table{width:100%;border-collapse:collapse;margin:8px 0 14px}
+.tbl{border-collapse:collapse;font-variant-numeric:tabular-nums}.tbl th{font-weight:700;text-align:left;color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:4px 4px;border-bottom:1px solid var(--line)}.tbl td{padding:6px 4px;border-bottom:1px solid var(--line);white-space:nowrap}.tbl.tiny{font-size:11.5px}
 .ficha th{background:#111;color:#fff;text-align:left;font-size:11px;padding:6px 8px;text-transform:uppercase;letter-spacing:.05em}
 .ficha td{border-bottom:1px solid #e5e5e5;padding:6px 8px}
 .ficha h2{font-family:var(--disp);font-size:20px;text-transform:uppercase;margin:12px 0 2px;border-left:5px solid var(--acc);padding-left:8px}
@@ -319,7 +321,7 @@ details.adv{margin-top:16px;border:1px solid var(--line);border-radius:16px;padd
   function pins() { return [0, 1, 2, 3, 4, 5].map(function (i) { return '<i class="' + (i < buf.length ? 'f' : '') + '"' + (i > 3 ? ' style="opacity:.45"' : '') + '></i>'; }).join(''); }
   function loginView() {
     var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    APP.innerHTML = '<div class="login enter"><div class="row" style="gap:14px;margin-bottom:26px"><div class="logo" style="width:54px;height:54px;font-size:24px;border-radius:16px">SL</div>' +
+    APP.innerHTML = '<div class="login enter"><div class="row" style="gap:14px;margin-bottom:26px">' + (window.SL_LOGO ? '<img class="logo" src="' + window.SL_LOGO + '" alt="" style="width:54px;height:54px;border-radius:16px">' : '<div class="logo" style="width:54px;height:54px;font-size:24px;border-radius:16px">SL</div>') + '' +
       '<div><div class="brand">Setup <em>Lab</em></div><div class="mut small" style="letter-spacing:.14em;text-transform:uppercase;margin-top:6px">Carcross · ingeniería de pista</div></div></div>' +
       '<label class="f">Móvil</label><input id="ltel" inputmode="tel" autocomplete="tel" placeholder="600 000 000" value="' + esc(load('sl_tel') || '') + '">' +
       '<label class="f" style="text-align:center;margin-top:20px">PIN</label><div class="pin">' + pins() + '</div>' +
