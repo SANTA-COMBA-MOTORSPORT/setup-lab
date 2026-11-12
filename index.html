@@ -304,6 +304,12 @@ details.adv{margin-top:16px;border:1px solid var(--line);border-radius:16px;padd
   var APP = document.getElementById('app'), buf = '', busyOn = false;
   function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (x) {} }
   function load(k) { try { return localStorage.getItem(k); } catch (x) { return null; } }
+  // La sesión se guarda por duplicado (almacenamiento + cookie de este dominio): si el iPhone borra uno, queda el otro.
+  function ck(k) { var m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+  function ckSet(k, v) { try { document.cookie = k + '=' + (v == null ? '; Max-Age=0' : encodeURIComponent(v) + '; Max-Age=' + 400 * 86400) + '; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : ''); } catch (x) {} }
+  function tokSave(t) { store('sl_token', t); ckSet('sl_token', t); }
+  function tokLoad() { var t = load('sl_token') || ck('sl_token'); if (t) { if (!load('sl_token')) store('sl_token', t); if (!ck('sl_token')) ckSet('sl_token', t); } return t; }
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (x) {}
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   window.apiFetch = function (req) {
     return fetch(window.SL_API, { method: 'POST', body: JSON.stringify(req), credentials: 'omit', redirect: 'follow' })
@@ -344,21 +350,29 @@ details.adv{margin-top:16px;border:1px solid var(--line);border-radius:16px;padd
     if (busyOn) return; var tel = (document.getElementById('ltel') || {}).value || '';
     if (buf.length < 4) { toast('El PIN tiene 4 a 6 cifras'); return; }
     busyOn = true; APP.querySelector('[data-a="login"]').textContent = '…';
-    api('login', { tel: tel, pin: buf }).then(function (r) { store('sl_token', r.token); store('sl_tel', tel); buf = ''; return fetchApp(r.token); })
+    api('login', { tel: tel, pin: buf }).then(function (r) { tokSave(r.token); store('sl_tel', tel); buf = ''; if (r.boot) { try { sessionStorage.setItem('sl_boot0', JSON.stringify(r.boot)); } catch (x) {} } return fetchApp(r.token); })
       .catch(function (err) {
         busyOn = false; buf = ''; var lb = APP.querySelector('[data-a="login"]');
         if (!lb) { loginView(); var t = document.getElementById('ltel'); if (t) t.value = tel; }   // la pantalla se perdió: se rehace con el móvil escrito
         else { lb.textContent = 'Entrar'; paint(); }
         var p = APP.querySelector('.pin'); if (p) { p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake'); } toast(err.message); });
   }
-  /** Pide la app al servidor (solo con sesión válida). Se guarda en este móvil por versión: la siguiente vez arranca al momento. */
+  /** Arranca al instante con la copia local de la app y comprueba la versión en segundo plano; sin copia, la pide al servidor. */
   function fetchApp(token) {
     var v = load('sl_bv'), cached = v ? load('sl_bundle') : null;
-    return api('bundle', { v: cached ? v : '' }, token).then(function (r) {
-      var html = r.same && cached ? cached : r.html;
-      if (!html) throw new Error('No se pudo cargar la app');
-      if (!r.same) { store('sl_bundle', null); store('sl_bv', null); try { localStorage.setItem('sl_bundle', html); localStorage.setItem('sl_bv', r.v); } catch (x) { store('sl_bundle', null); store('sl_bv', null); } }
-      inject(html);
+    if (cached) {
+      inject(cached);
+      api('bundle', { v: v }, token).then(function (r) {
+        if (r.same || !r.html) return;
+        try { localStorage.setItem('sl_bundle', r.html); localStorage.setItem('sl_bv', r.v); } catch (x) { store('sl_bundle', null); store('sl_bv', null); }
+        if (window.__SL_NEWVER) window.__SL_NEWVER(); else { var t = document.createElement('div'); t.className = 'toast'; t.textContent = 'Hay una versión nueva: se aplicará al volver a abrir'; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3500); }
+      }).catch(function (err) { if (err && err.code === 'SESION') { tokSave(null); location.reload(); } });
+      return Promise.resolve();
+    }
+    return api('bundle', { v: '' }, token).then(function (r) {
+      if (!r.html) throw new Error('No se pudo cargar la app');
+      try { localStorage.setItem('sl_bundle', r.html); localStorage.setItem('sl_bv', r.v); } catch (x) { store('sl_bundle', null); store('sl_bv', null); }
+      inject(r.html);
     });
   }
   function inject(html) {
@@ -374,10 +388,10 @@ details.adv{margin-top:16px;border:1px solid var(--line);border-radius:16px;padd
     if (window.__SL_BOOT) window.__SL_BOOT();
   }
   document.addEventListener('click', onClick); document.addEventListener('keydown', onKey);
-  var tk = load('sl_token');
+  var tk = tokLoad();
   if (!tk) loginView();
   else fetchApp(tk).catch(function (err) {
-    if (err.code === 'SESION') { store('sl_token', null); loginView(); return; }
+    if (err.code === 'SESION') { tokSave(null); loginView(); return; }
     APP.innerHTML = '<div class="center" style="padding-top:120px"><div style="font-size:40px">📡</div><h3>No se pudo conectar</h3><p class="small mut">' + esc(err.message) + '</p><button class="btn p" onclick="location.reload()">Reintentar</button></div>';
   });
 })();
